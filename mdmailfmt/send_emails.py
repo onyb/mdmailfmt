@@ -48,11 +48,11 @@ def get_addr_and_values(csv_values_filename, delimiter, quotechar):
         ]
 
 
-def email_obj_of_md(from_address, to_address, subject, md_message):
+def email_obj_of_md(from_address, to_address, subject, md_message, values):
     email_obj = MIMEMultipart('alternative')
     email_obj['To'] = to_address
     email_obj['From'] = from_address
-    email_obj['Subject'] = subject
+    email_obj['Subject'] = render_messages(subject, values)
     part1, part2 = parts_of_md(md_message)
     email_obj.attach(part1)
     email_obj.attach(part2)
@@ -138,7 +138,8 @@ def main(args):
     batch_length = args.paging
     recipients_and_bodies = zip(
         recipient_email_addresses,
-        md_bodies
+        md_bodies,
+        values
     )
     while batch_length == args.paging:
         with running_smtp_connection(args.smtp_server_host,
@@ -146,13 +147,13 @@ def main(args):
                                      args.smtp_login,
                                      args.smtp_password) as smtp_server:
             batch_length = 0
-            for i, (recipient_email_address, md_body) in enumerate(
+            for i, (recipient_email_address, md_body, value) in enumerate(
                     recipients_and_bodies
             ):
                 smtp_server.ehlo()
                 email_obj = email_obj_of_md(args.from_address,
                                             recipient_email_address,
-                                            args.subject, md_body)
+                                            args.subject, md_body, value)
                 for attachment in args.attachments:
                     email_obj = attach_filename(email_obj, attachment)
                 smtp_recipients = [recipient_email_address] + args.bcc_addresses
@@ -231,7 +232,7 @@ if __name__ == '__main__':
                             '(goes with the "paging" argument).'
                         ),
                         dest='pause_in_seconds')
-                        
+
     parser.add_argument('--csv-delimiter', default=',')
     parser.add_argument('--csv-quotechar', default='"')
 
